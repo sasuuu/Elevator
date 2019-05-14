@@ -3,7 +3,6 @@
 public class PlayerMovement : MonoBehaviour{
 
     [Range(0.1f, 100f)] public float mouseSensitivity;
-
     new GameObject camera;
     float verticalSpeed = 2f;
     float horizontalSpeed = 1f;

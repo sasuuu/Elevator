@@ -10,7 +10,6 @@ public class DoorsController : MonoBehaviour
     float animProgress = 0f;
     bool isClosed = true;
     
-    
     void Start()
     {
         anim = GetComponent<Animation>();
@@ -26,10 +25,15 @@ public class DoorsController : MonoBehaviour
     {
         if (anim.isPlaying && animState.speed == -1)
         {
-            animProgress = animState.time;
-            anim.Stop();
-            Invoke("ResumeAnimationReverse", 2f);
+            StopAnim();
         }
+    }
+
+    void StopAnim()
+    {
+        animProgress = animState.time;
+        anim.Stop();
+        Invoke("ResumeAnimationReverse", 2f);
     }
 
     void OnTriggerExit(Collider collider)
@@ -39,8 +43,14 @@ public class DoorsController : MonoBehaviour
 
     void Update()
     {
-        if (objectsInTrigger > 0) isObjectInTrigger = true;
-        else isObjectInTrigger = false;
+        if (objectsInTrigger > 0)
+        {
+            isObjectInTrigger = true;
+        }
+        else
+        {
+            isObjectInTrigger = false;
+        }
     }
 
     public bool IsObjectInTrigger()

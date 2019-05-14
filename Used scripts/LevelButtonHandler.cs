@@ -16,8 +16,16 @@ public class LevelButtonHandler : MonoBehaviour
         GameObject[] objects = GetParentObjects();
         foreach (GameObject obj in objects)
         {
-            if (obj.tag == "Level") level = obj;
+            if (obj.tag == "Level")
+            {
+                SetLevel(obj);
+            }
         }
+    }
+
+    void SetLevel(GameObject level)
+    {
+        this.level = level;
     }
 
     private GameObject[] GetParentObjects()

@@ -17,10 +17,15 @@ public class AudioController : MonoBehaviour
         {
             if (obj.name == name)
             {
-                audioSource.clip = obj.clip;
-                audioSource.loop = loop;
-                audioSource.Play();
+                PlaySound(obj, loop);
             }
         }
+    }
+
+    void PlaySound(SoundObject obj, bool loop)
+    {
+        audioSource.clip = obj.clip;
+        audioSource.loop = loop;
+        audioSource.Play();
     }
 }

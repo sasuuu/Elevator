@@ -26,7 +26,6 @@ public class ElevatorController : MonoBehaviour
     bool levelReached = false;
     bool isNextLevel = false;
 
-
     void Start()
     {
         audioController = GetComponent<AudioController>();
@@ -34,22 +33,32 @@ public class ElevatorController : MonoBehaviour
         doorsController = GetComponentInChildren<DoorsController>();
         if (levels.Length > 1)
         {
-            System.Array.Sort(levels, delegate (GameObject level1, GameObject level2)
-            {
-                return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
-            });
+            SortArray(levels);
         }
         if (levels.Length > 0)
         {
-            GameObject obj = (GameObject)levels.GetValue(0);
-            transform.SetPositionAndRotation(new Vector3(transform.position.x, obj.transform.position.y, transform.position.z), transform.localRotation);
-            actualLevelDoorsController = obj.GetComponentInChildren<DoorsController>();
-            actualLevel = startLevelIndex;
-            nextLevel = actualLevel;
+            SetStartPosition();
         }
     }
 
-    
+    void SetStartPosition()
+    {
+        GameObject obj = (GameObject)levels.GetValue(0);
+        transform.SetPositionAndRotation(new Vector3(transform.position.x, obj.transform.position.y, transform.position.z), transform.localRotation);
+        actualLevelDoorsController = obj.GetComponentInChildren<DoorsController>();
+        actualLevel = startLevelIndex;
+        nextLevel = actualLevel;
+    }
+
+    void SortArray(GameObject[] array)
+    {
+        System.Array.Sort(array, delegate (GameObject obj1, GameObject obj2)
+            {
+                return obj1.GetComponent<Transform>().position.y.CompareTo(obj2.GetComponent<Transform>().position.y);
+            }
+        );
+    }
+
     void FixedUpdate()
     {
         FindNextLevel();
@@ -60,24 +69,45 @@ public class ElevatorController : MonoBehaviour
 
     void CheckDoorsClose()
     {
-        if (!waitingForClose) return;
+        if (!waitingForClose) 
+        {
+            return;
+        }
         if (doorsController.IsClosed() && actualLevelDoorsController.IsClosed())
         {
-            audioController.Play("sound", true);
-            levelReached = false;
-            waitingForClose = false;
+            DoorsClosed();
         }
     }
 
+    void DoorsClosed(){
+        audioController.Play("sound", true);
+        levelReached = false;
+        waitingForClose = false;
+    }
+
     void LevelVisited()
+    {
+        CloseDoors();
+        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), requestedLevelsDown))
+        { 
+            RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), requestedLevelsDown);
+        }
+        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), requestedLevelsUp))
+        {
+             RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), requestedLevelsUp);
+        }
+        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), choosedLevels)) 
+        {
+            RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), choosedLevels);
+        }
+    }
+
+    void CloseDoors()
     {
         audioController.Play("open_close", false);
         doorsController.CloseDoors();
         actualLevelDoorsController.CloseDoors();
         waitingForClose = true;
-        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), requestedLevelsDown)) RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), requestedLevelsDown);
-        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), requestedLevelsUp)) RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), requestedLevelsUp);
-        if (IsLevelInList(GetObjectByLevelIndex(actualLevel), choosedLevels)) RemoveLevelFormList(GetObjectByLevelIndex(actualLevel), choosedLevels);
     }
 
     void RemoveLevelFormList(GameObject level, List<GameObject> list)
@@ -85,7 +115,10 @@ public class ElevatorController : MonoBehaviour
         int index = 0;
         foreach(GameObject obj in list)
         {
-            if (level.GetInstanceID() == obj.GetInstanceID()) break;
+            if (level.GetInstanceID() == obj.GetInstanceID())
+            {
+                break;
+            }
             index++;
         }
         list.RemoveAt(index);
@@ -93,21 +126,28 @@ public class ElevatorController : MonoBehaviour
 
     void Move()
     {
-        if (!isNextLevel) return;
+        if (!isNextLevel)
+        { 
+            return;
+        }
         Vector3 move = new Vector3(0,0,0);
-        if (elevatorState == ELEVATOR_UP && transform.position.y < GetObjectByLevelIndex(nextLevel).transform.position.y) move = new Vector3(0, elevatorSpeed, 0);
-        else if (elevatorState == ELEVATOR_DOWN && transform.position.y > GetObjectByLevelIndex(nextLevel).transform.position.y) move = new Vector3(0, -elevatorSpeed, 0);
+        if (elevatorState == ELEVATOR_UP && transform.position.y < GetObjectByLevelIndex(nextLevel).transform.position.y) 
+        {
+            move = new Vector3(0, elevatorSpeed, 0);
+        }
+        else if (elevatorState == ELEVATOR_DOWN && transform.position.y > GetObjectByLevelIndex(nextLevel).transform.position.y) 
+        {
+            move = new Vector3(0, -elevatorSpeed, 0);
+        }
         if (!waitingForClose && !levelReached)
         {
-            transform.Translate(move * Time.deltaTime);
-            Collider[] hitColliders = Physics.OverlapBox(elevatorCollider.transform.position, elevatorCollider.transform.localScale / 2, Quaternion.identity);
-            int i = 0;
-            while (i < hitColliders.Length)
-            {
-                if (hitColliders[i].tag == "Player") hitColliders[i].transform.Translate(move * Time.deltaTime);
-                i++;
-            }
+            MoveElvator(move); 
         }
+        CheckLevelReached();
+    }
+
+    void CheckLevelReached()
+    {
         if (elevatorState == ELEVATOR_UP && transform.position.y > GetObjectByLevelIndex(nextLevel).transform.position.y)
         {
             LevelReached();
@@ -122,26 +162,61 @@ public class ElevatorController : MonoBehaviour
         }
     }
 
+    void MoveElvator(Vector3 vec)
+    {
+        transform.Translate(vec * Time.deltaTime);
+        MoveObjectsInElevator(vec);
+    }
+
+    void MoveObjectsInElevator(Vector3 vec)
+    {
+        Collider[] hitColliders = Physics.OverlapBox(elevatorCollider.transform.position, elevatorCollider.transform.localScale / 2, Quaternion.identity);
+        int i = 0;
+        while (i < hitColliders.Length)
+        {
+            if (hitColliders[i].tag == "Player") 
+            {
+                hitColliders[i].transform.Translate(vec * Time.deltaTime);
+            }
+            i++;
+        }
+    }
+
     void LevelReached()
     {
         levelReached = true;
         transform.SetPositionAndRotation(new Vector3(transform.position.x, GetObjectByLevelIndex(nextLevel).transform.position.y, transform.position.z), transform.localRotation);
+        OpenDoors();
+        TextMeshPro[] objects;
+        objects = GetObjectByLevelIndex(nextLevel).GetComponentsInChildren<TextMeshPro>();
+        foreach (TextMeshPro obj in objects)
+        {
+            obj.color = Color.white;
+        }
+        objects = GetComponentsInChildren<TextMeshPro>();
+        foreach (TextMeshPro obj in objects)
+        {
+            if (nextLevel.ToString() == obj.text)
+            {
+                obj.color = Color.white;
+            }
+        }
+        Invoke("LevelVisited", timeToCloseDoors);
+    }
+
+    void OpenDoors()
+    {
         audioController.Play("open_close", false);
         doorsController.OpenDoors();
         actualLevelDoorsController.OpenDoors();
-        TextMeshPro[] objects;
-        objects = GetObjectByLevelIndex(nextLevel).GetComponentsInChildren<TextMeshPro>();
-        foreach (TextMeshPro obj in objects) obj.color = Color.white;
-        objects = GetComponentsInChildren<TextMeshPro>();
-        foreach (TextMeshPro obj in objects)
-            if (nextLevel.ToString() == obj.text)
-                obj.color = Color.white;
-        Invoke("LevelVisited", timeToCloseDoors);
     }
 
     GameObject GetObjectByLevelIndex(int index)
     {
-        if (index < startLevelIndex || index > levels.Length + startLevelIndex) return null;
+        if (index < startLevelIndex || index > levels.Length + startLevelIndex)
+        { 
+            return null;
+        }
         return (GameObject)levels.GetValue(index-startLevelIndex);
     }
 
@@ -153,8 +228,14 @@ public class ElevatorController : MonoBehaviour
             return;
         }
         isNextLevel = true;
-        if (elevatorState == ELEVATOR_UP) SearchNextLevelUp();
-        if (elevatorState == ELEVATOR_DOWN) SearchNextLevelDown();
+        if (elevatorState == ELEVATOR_UP) 
+        {
+            SearchNextLevelUp();
+        }
+        if (elevatorState == ELEVATOR_DOWN) 
+        {
+            SearchNextLevelDown();
+        }
     }
 
     bool SearchNextLevelDown()
@@ -199,7 +280,10 @@ public class ElevatorController : MonoBehaviour
     {
         foreach(GameObject obj in list)
         {
-            if (level.GetInstanceID() == obj.GetInstanceID()) return true;
+            if (level.GetInstanceID() == obj.GetInstanceID())
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -230,7 +314,8 @@ public class ElevatorController : MonoBehaviour
             {
                 actualLevel = index + startLevelIndex;
                 break;
-            }else if(actualY < objY && index > 0)
+            }
+            else if(actualY < objY && index > 0)
             {
                 actualLevel = index - 1 + startLevelIndex;
                 break;
@@ -244,25 +329,41 @@ public class ElevatorController : MonoBehaviour
 
     public void ChooseLevel(int level)
     {
-        if (level < startLevelIndex || ((level - startLevelIndex) > levels.Length)) return;
-        else AddChoosedLevel(level);
+        if (level < startLevelIndex || ((level - startLevelIndex) > levels.Length)) 
+        {
+            return;
+        }
+        else 
+        {
+            AddChoosedLevel(level);
+        }
     }
 
     void AddChoosedLevel(int level)
     {
         GameObject levelToAdd = (GameObject)levels.GetValue(level - startLevelIndex);
-        if (IsLevelInList(levelToAdd, choosedLevels)) return;
+        if (IsLevelInList(levelToAdd, choosedLevels)) 
+        {
+            return;
+        }
         choosedLevels.Add(levelToAdd);
         choosedLevels.Sort(delegate (GameObject level1, GameObject level2)
-        {
-            return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
-        });
+            {
+                return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
+            }
+        );
     }
 
     public void RequestElevator(string direction, GameObject level)
     {
-        if (direction == "Up") AddRequestUp(level);
-        else if(direction == "Down") AddRequestDown(level);
+        if (direction == "Up") 
+        {
+            AddRequestUp(level);
+        }
+        else if(direction == "Down") 
+        {
+            AddRequestDown(level);
+        }
     }
 
     void AddRequestUp(GameObject level)
@@ -270,9 +371,10 @@ public class ElevatorController : MonoBehaviour
         if (IsLevelInList(level, requestedLevelsUp)) return;
         requestedLevelsUp.Add(level);
         requestedLevelsUp.Sort(delegate (GameObject level1, GameObject level2)
-        {
-            return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
-        });
+            {
+                return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
+            }
+        );
     }
 
     void AddRequestDown(GameObject level)
@@ -280,8 +382,9 @@ public class ElevatorController : MonoBehaviour
         if (IsLevelInList(level, requestedLevelsDown)) return;
         requestedLevelsDown.Add(level);
         requestedLevelsDown.Sort(delegate (GameObject level1, GameObject level2)
-        {
-            return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
-        });
+            {
+                return level1.GetComponent<Transform>().position.y.CompareTo(level2.GetComponent<Transform>().position.y);
+            }
+        );
     }
 }

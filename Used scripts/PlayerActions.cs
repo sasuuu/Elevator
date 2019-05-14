@@ -7,9 +7,9 @@ public class PlayerActions : MonoBehaviour
 
     public Text text;
     public Canvas info;
-
     new GameObject camera;
     float playerRange = 1f;
+    int LEFT_MOUSE_BUTTON = 0;
 
     void Start()
     {
@@ -18,46 +18,80 @@ public class PlayerActions : MonoBehaviour
 
     void Update()
     {
+        RaycastCheck();
+    }
+
+    void RaycastCheck(){
         Ray ray = new Ray(camera.transform.position, camera.transform.forward);
         RaycastHit hitInfo;
         int layerMask = 1 << gameObject.layer;
         layerMask = ~layerMask;
         if (Physics.Raycast(ray, out hitInfo, playerRange, layerMask))
         {
-            collideHandler(hitInfo);
+            CollideHandler(hitInfo);
         }
         else
         {
-            info.enabled = false;
+            HideInfo();
         }
     }
 
-    void collideHandler(RaycastHit hitInfo)
+    void HideInfo()
+    {
+        info.enabled = false;
+    }
+
+    void CollideHandler(RaycastHit hitInfo)
     {
         if (hitInfo.collider.tag == "LevelElevatorButton")
         {
-            text.text = "Click left mouse button";
-            info.enabled = true;
-            if (Input.GetMouseButtonDown(0))
-            {
-                hitInfo.collider.GetComponent<LevelButtonHandler>().RequestElevator();
-            }
+            LevelElevatorButtonHandler(hitInfo);
         }
         else if(hitInfo.collider.tag == "ElevatorButton")
         {
-            ElevatorButtonHandler elevatorButton = hitInfo.collider.GetComponent<ElevatorButtonHandler>();
-            TextMeshPro elevatorButtonText = hitInfo.collider.GetComponentInChildren<TextMeshPro>();
-            text.text = "Click left mouse button(level " + elevatorButtonText.text + ")";
-            info.enabled = true;
-            if (Input.GetMouseButtonDown(0))
-            {
-                elevatorButtonText.color = Color.green;
-                elevatorButton.ChooseLevel();
-            }
+            ElevatorButtonHandler(hitInfo);
         }
         else
         {
-            info.enabled = false;
+            HideInfo();
         }
+    }
+
+    void ShowInfo()
+    {
+        info.enabled = true;
+    }
+
+    void ElevatorButtonHandler(RaycastHit hitInfo)
+    {
+        ElevatorButtonHandler elevatorButton = hitInfo.collider.GetComponent<ElevatorButtonHandler>();
+        TextMeshPro elevatorButtonText = hitInfo.collider.GetComponentInChildren<TextMeshPro>();
+        text.text = "Click left mouse button(level " + elevatorButtonText.text + ")";
+        ShowInfo();
+        if (Input.GetMouseButtonDown(0))
+        {
+            ChooseLevel(elevatorButton, elevatorButtonText);
+        }
+    }
+
+    void ChooseLevel(ElevatorButtonHandler elevatorButton, TextMeshPro elevatorButtonText)
+    {
+        elevatorButtonText.color = Color.green;
+        elevatorButton.ChooseLevel();
+    }
+
+    void LevelElevatorButtonHandler(RaycastHit hitInfo)
+    {
+        text.text = "Click left mouse button";
+        ShowInfo();
+        if (Input.GetMouseButtonDown(LEFT_MOUSE_BUTTON))
+        {
+            RequestLevel(hitInfo);
+        }
+    }
+
+    void RequestLevel(RaycastHit hitInfo)
+    {
+        hitInfo.collider.GetComponent<LevelButtonHandler>().RequestElevator();
     }
 }
